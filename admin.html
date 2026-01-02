@@ -5,42 +5,419 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>utubee admin</title>
   <style>
-    body{margin:0;background:#0b0b0f;color:#e9e9ee;font-family:system-ui;padding:16px}
-    code,pre,textarea{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#e9e9ee}
-    textarea{width:100%;min-height:200px;padding:10px}
-    .btn{display:inline-block;margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);cursor:pointer}
+    body{margin:0;background:#0b0b0f;color:#e9e9ee;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px 16px 40px}
+    h2{margin:0 0 10px}
+    .hint{opacity:.8;font-size:13px;line-height:1.35;margin:6px 0 14px}
+
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+    .btn{
+      padding:10px 12px;border-radius:12px;cursor:pointer;user-select:none;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.10); color:inherit;
+    }
+    .btn:hover{background:rgba(255,255,255,.13)}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:rgba(90,140,255,.18);border-color:rgba(90,140,255,.35)}
+    .btn.danger{background:rgba(255,90,90,.14);border-color:rgba(255,90,90,.28)}
+    .btn.ghost{background:transparent}
+    .btn[disabled]{opacity:.45;cursor:not-allowed}
+
+    textarea, pre, input[type="text"]{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      color:#e9e9ee;
+    }
+    textarea{width:100%;min-height:130px;padding:10px;box-sizing:border-box}
     pre{padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word}
-    .hint{opacity:.8;font-size:13px;line-height:1.35}
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+      margin-top: 10px;
+    }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
+      border-radius:16px;
+      padding:12px;
+    }
+    .panel h3{margin:0 0 8px;font-size:14px;opacity:.9}
+
+    /* List */
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{
+      display:grid;
+      grid-template-columns: 38px 96px 1fr 86px;
+      gap:10px;
+      align-items:center;
+      padding:10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.03);
+    }
+    .handle{
+      width:38px;height:38px;border-radius:12px;
+      display:grid;place-items:center;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      cursor:grab;
+      font-size:18px;
+      user-select:none;
+      touch-action:none;
+    }
+    .handle:active{cursor:grabbing}
+    .thumb{
+      width:96px;height:54px;border-radius:12px;overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background:#111;
+    }
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .meta{min-width:0}
+    .id{font-size:12px;opacity:.85;word-break:break-all}
+    .url{font-size:11px;opacity:.65;word-break:break-all;margin-top:4px}
+    .actions{display:flex;justify-content:flex-end}
+    .smallbtn{
+      padding:8px 10px;border-radius:12px;cursor:pointer;user-select:none;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08); color:inherit;
+      font-size:12px;
+    }
+    .smallbtn:hover{background:rgba(255,255,255,.12)}
+
+    .drop-hint{
+      outline:2px dashed rgba(90,140,255,.55);
+      outline-offset: 3px;
+      background:rgba(90,140,255,.08);
+    }
+
+    .footer-note{opacity:.75;font-size:12px;margin-top:10px;line-height:1.35}
     a{color:#b7d0ff}
+    .pill{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      font-size:12px;
+      opacity:.9;
+    }
   </style>
 </head>
 <body>
-  <h2>utubee admin</h2>
-  <p class="hint">
-    Paste YouTube links (one per line), generate <code>videos.json</code>, then copy it into the repo file.
-    This page can't "save" to GitHub by itself because GitHub Pages is static (sad trombone).
-  </p>
+  <div class="wrap">
+    <h2>utubee admin</h2>
+    <div class="hint">
+      This page edits your list locally in the browser. GitHub Pages can’t save files back to the repo by itself,
+      so you still copy JSON → paste into <span class="pill">videos.json</span> → commit.
+    </div>
 
-  <textarea id="ta" placeholder="https://youtu.be/nT6l0tZv57Y"></textarea>
-  <div class="btn" id="gen">Generate videos.json</div>
+    <div class="panel">
+      <h3>1) Load existing list</h3>
+      <div class="row">
+        <div class="btn primary" id="load">Load videos.json</div>
+        <label class="pill"><input type="checkbox" id="dedupe" checked> De-dupe on add</label>
+        <div class="btn ghost" id="clear">Clear list</div>
+        <div class="pill" id="countPill">0 videos</div>
+      </div>
+      <div class="hint" id="loadMsg"></div>
+    </div>
 
-  <h3>Copy this into <code>videos.json</code></h3>
-  <pre id="out"></pre>
+    <div class="panel">
+      <h3>2) Add new videos</h3>
+      <div class="hint">Paste YouTube URLs (one per line). You can paste full links or short youtu.be links.</div>
+      <textarea id="ta" placeholder="https://youtu.be/nT6l0tZv57Y"></textarea>
+      <div class="row">
+        <div class="btn primary" id="add">Add to list</div>
+        <div class="btn" id="addTop">Add to top</div>
+        <div class="btn" id="fromIds">Convert to IDs</div>
+      </div>
+    </div>
 
-  <p class="hint">
-    Back to wall: <a href="./index.html">index.html</a>
-  </p>
+    <div class="panel">
+      <h3>3) Reorder visually (drag the ☰ handle)</h3>
+      <div class="list" id="list"></div>
+      <div class="footer-note">
+        Tip: starting a video on the wall will auto-stop the previous one, so order actually matters. (Science.)
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>4) Output</h3>
+      <div class="row">
+        <div class="btn primary" id="gen">Generate JSON</div>
+        <div class="btn" id="copy" disabled>Copy JSON</div>
+      </div>
+      <pre id="out"></pre>
+      <div class="footer-note">
+        Paste that into <span class="pill">videos.json</span> in the repo and commit.
+        Your wall reads it at runtime.
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Back to wall: <a href="./index.html">index.html</a>
+    </div>
+  </div>
 
 <script>
-  document.getElementById("gen").addEventListener("click", ()=>{
-    const lines = document.getElementById("ta").value
-      .split(/\r?\n/)
-      .map(s=>s.trim())
+  // --- utilities ---
+  function parseVideoId(input){
+    const s = String(input||"").trim();
+    if(!s) return null;
+    if(/^[a-zA-Z0-9_-]{8,15}$/.test(s) && !s.includes("http")) return s;
+    try{
+      const u = new URL(s);
+      if(u.hostname.includes("youtu.be")) return u.pathname.replace("/","") || null;
+      if(u.hostname.includes("youtube.com")){
+        if(u.searchParams.get("v")) return u.searchParams.get("v");
+        const m = u.pathname.match(/\/shorts\/([^/]+)/); if(m) return m[1];
+        const e = u.pathname.match(/\/embed\/([^/]+)/); if(e) return e[1];
+      }
+    }catch{}
+    return null;
+  }
+
+  function normalizeUrlOrId(line){
+    const t = String(line||"").trim();
+    if(!t) return null;
+    const id = parseVideoId(t);
+    if(!id) return null;
+    // store as URL (your existing format), but normalized
+    return `https://youtu.be/${id}`;
+  }
+
+  function uniqKeepOrder(arr){
+    const seen = new Set();
+    const out = [];
+    for(const x of arr){
+      if(seen.has(x)) continue;
+      seen.add(x);
+      out.push(x);
+    }
+    return out;
+  }
+
+  async function copyText(text){
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch{
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    }
+  }
+
+  // --- state ---
+  let videos = []; // array of normalized youtu.be URLs
+  let dragSrcIndex = null;
+
+  const elLoad = document.getElementById("load");
+  const elLoadMsg = document.getElementById("loadMsg");
+  const elClear = document.getElementById("clear");
+  const elDedup = document.getElementById("dedupe");
+  const elCount = document.getElementById("countPill");
+
+  const elTa = document.getElementById("ta");
+  const elAdd = document.getElementById("add");
+  const elAddTop = document.getElementById("addTop");
+  const elFromIds = document.getElementById("fromIds");
+
+  const elList = document.getElementById("list");
+  const elGen = document.getElementById("gen");
+  const elOut = document.getElementById("out");
+  const elCopy = document.getElementById("copy");
+
+  function setCount(){
+    elCount.textContent = `${videos.length} video${videos.length===1?"":"s"}`;
+  }
+
+  function renderList(){
+    elList.innerHTML = "";
+    setCount();
+
+    if(!videos.length){
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.textContent = "List is empty. Load videos.json or add new links above.";
+      elList.appendChild(empty);
+      return;
+    }
+
+    videos.forEach((url, idx) => {
+      const id = parseVideoId(url);
+      const item = document.createElement("div");
+      item.className = "item";
+      item.dataset.index = String(idx);
+      item.draggable = false; // handle will be draggable
+
+      const handle = document.createElement("div");
+      handle.className = "handle";
+      handle.textContent = "☰";
+      handle.draggable = true;
+
+      // drag events on handle
+      handle.addEventListener("dragstart", (e) => {
+        dragSrcIndex = idx;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(idx));
+        // some browsers need an image; leaving default is fine
+      });
+
+      handle.addEventListener("dragend", () => {
+        dragSrcIndex = null;
+        document.querySelectorAll(".item.drop-hint").forEach(n => n.classList.remove("drop-hint"));
+      });
+
+      item.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        item.classList.add("drop-hint");
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      item.addEventListener("dragleave", () => item.classList.remove("drop-hint"));
+
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
+        item.classList.remove("drop-hint");
+        const from = dragSrcIndex ?? Number(e.dataTransfer.getData("text/plain"));
+        const to = idx;
+        if(Number.isNaN(from) || from === to) return;
+
+        const moved = videos.splice(from, 1)[0];
+        videos.splice(to, 0, moved);
+        renderList();
+      });
+
+      const thumb = document.createElement("div");
+      thumb.className = "thumb";
+      thumb.innerHTML = `<img loading="lazy" src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="">`;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML = `
+        <div class="id">${id || "(invalid)"}</div>
+        <div class="url">${escapeHtml(url)}</div>
+      `;
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const del = document.createElement("div");
+      del.className = "smallbtn";
+      del.textContent = "Remove";
+      del.addEventListener("click", () => {
+        videos.splice(idx, 1);
+        renderList();
+      });
+      actions.appendChild(del);
+
+      item.appendChild(handle);
+      item.appendChild(thumb);
+      item.appendChild(meta);
+      item.appendChild(actions);
+      elList.appendChild(item);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  function addLinesToList(lines, mode){
+    // mode: "bottom" | "top"
+    const normalized = lines
+      .map(normalizeUrlOrId)
       .filter(Boolean);
 
-    const json = JSON.stringify({videos: lines}, null, 2);
-    document.getElementById("out").textContent = json;
+    if(!normalized.length) return {added:0, ignored: lines.length};
+
+    let next;
+    if(mode === "top") next = normalized.concat(videos);
+    else next = videos.concat(normalized);
+
+    if(elDedup.checked) next = uniqKeepOrder(next);
+
+    const before = videos.length;
+    videos = next;
+    renderList();
+
+    return {added: videos.length - before, ignored: lines.length - normalized.length};
+  }
+
+  // --- actions ---
+  elLoad.addEventListener("click", async () => {
+    elLoadMsg.textContent = "Loading…";
+    try{
+      const res = await fetch("./videos.json", {cache:"no-store"});
+      const data = await res.json();
+      const arr = Array.isArray(data.videos) ? data.videos : [];
+      // normalize what we load
+      const norm = arr.map(normalizeUrlOrId).filter(Boolean);
+      videos = elDedup.checked ? uniqKeepOrder(norm) : norm;
+      elLoadMsg.textContent = `Loaded ${videos.length} video(s) from videos.json.`;
+      renderList();
+    }catch(err){
+      elLoadMsg.textContent = "Failed to load videos.json. (Is it in the repo root? Did you commit it?)";
+    }
   });
+
+  elClear.addEventListener("click", () => {
+    videos = [];
+    elLoadMsg.textContent = "";
+    elOut.textContent = "";
+    elCopy.disabled = true;
+    renderList();
+  });
+
+  elAdd.addEventListener("click", () => {
+    const lines = elTa.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const res = addLinesToList(lines, "bottom");
+    elTa.value = "";
+    elLoadMsg.textContent = `Added ${Math.max(0,res.added)}; ignored invalid: ${Math.max(0,res.ignored)}.`;
+  });
+
+  elAddTop.addEventListener("click", () => {
+    const lines = elTa.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const res = addLinesToList(lines, "top");
+    elTa.value = "";
+    elLoadMsg.textContent = `Added to top ${Math.max(0,res.added)}; ignored invalid: ${Math.max(0,res.ignored)}.`;
+  });
+
+  elFromIds.addEventListener("click", () => {
+    // Converts whatever is in the textarea into normalized youtu.be URLs
+    const lines = elTa.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const norm = lines.map(normalizeUrlOrId).filter(Boolean);
+    elTa.value = norm.join("\n");
+    elLoadMsg.textContent = `Converted ${norm.length} line(s) to normalized links.`;
+  });
+
+  elGen.addEventListener("click", () => {
+    const json = JSON.stringify({videos: videos.slice()}, null, 2);
+    elOut.textContent = json;
+    elCopy.disabled = !videos.length;
+    elLoadMsg.textContent = videos.length ? "JSON generated. Copy it into videos.json in the repo." : "Nothing to generate yet.";
+  });
+
+  elCopy.addEventListener("click", async () => {
+    const txt = elOut.textContent.trim();
+    if(!txt) return;
+    const ok = await copyText(txt);
+    elLoadMsg.textContent = ok ? "Copied JSON to clipboard." : "Copy failed (browser said no). Long-press and copy manually.";
+  });
+
+  // initial
+  renderList();
 </script>
 </body>
 </html>
