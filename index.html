@@ -1,125 +1,14 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>utubee</title>
-  <style>
-    :root{
-      /* Defaults (overridden by settings / localStorage) */
-      --minTile: 220px;          /* tile width */
-      --gap: 14px;
 
-      /* Aging curve knobs */
-      --dimMax: 0.45;            /* brightness drop for oldest (0..0.9) */
-      --satMax: 0.25;            /* saturation drop for oldest (0..0.9) */
-      --borderMinA: 0.08;        /* oldest border alpha (0..0.4) */
-      --borderMaxA: 0.35;        /* newest border alpha (0..1) */
-
-      /* Newest tile emphasis */
-      --newBorderA: 0.95;
-      --newBoostB: 1.05;
-      --newBoostS: 1.05;
-    }
-
-    body{margin:0;background:#0b0b0f;color:#e9e9ee;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-    .wrap{max-width:1200px;margin:0 auto;padding:14px 16px 40px}
-
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fill, minmax(var(--minTile), 1fr));
-      gap: var(--gap);
-    }
-
-    .card{
-      border-radius:16px;
-      overflow:hidden;
-      background:rgba(255,255,255,.04);
-      box-shadow: 0 8px 26px rgba(0,0,0,.35);
-    }
-
-    /* Each tile gets per-item CSS vars: --b, --s, --borderA */
-    .tile{
-      position:relative;
-      aspect-ratio:16/9;
-      background:#111;
-      border: 1px solid rgba(255,255,255, var(--borderA, .10));
-      filter: brightness(var(--b, 1)) saturate(var(--s, 1));
-    }
-
-    .card.is-new .tile{
-      border: 1px solid rgba(255,255,255,var(--newBorderA));
-      filter: brightness(var(--newBoostB)) saturate(var(--newBoostS));
-    }
-
-    .tile img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
-
-    .play{
-      position:absolute;inset:0;display:grid;place-items:center;cursor:pointer;
-      background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.05));
-    }
-    .play span{
-      width:56px;height:56px;border-radius:999px;display:grid;place-items:center;
-      background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)
-    }
-    .play svg{width:18px;height:18px;fill:#fff;margin-left:2px}
-
-    .player{width:100%;height:100%;border:0;display:block}
-
-    .x{
-      position:absolute; top:8px; right:8px; z-index:3;
-      padding:6px 9px; border-radius:12px;
-      background:rgba(0,0,0,.55);
-      border:1px solid rgba(255,255,255,.16);
-      color:#fff; cursor:pointer; user-select:none;
-      font-size:12px; line-height:1;
-    }
-
-    /* Settings button + panel */
-    .gear{
-      position:fixed; right:14px; top:14px; z-index:100;
-      width:40px;height:40px;border-radius:14px;
-      display:grid;place-items:center;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.08);
-      backdrop-filter: blur(8px);
-      cursor:pointer; user-select:none;
-    }
-    .gear:hover{background:rgba(255,255,255,.12)}
-
-    .panel{
-      position:fixed; right:14px; top:60px; z-index:101;
-      width:min(360px, calc(100vw - 28px));
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(10,10,14,.92);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 12px 40px rgba(0,0,0,.45);
-      padding:12px;
-      display:none;
-    }
-    .panel.on{display:block}
-    .panel h3{margin:4px 0 10px;font-size:14px;opacity:.9}
-    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:10px 0}
-    .row label{font-size:12px;opacity:.85}
-    .row .val{font-size:12px;opacity:.75;min-width:54px;text-align:right}
-    input[type="range"]{width: 190px}
-    .btns{display:flex;gap:10px;margin-top:10px}
-    .btn{
-      padding:10px 12px;border-radius:12px;cursor:pointer;user-select:none;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.10); color:inherit;
-      font-size:12px;
-      flex:1;
-      text-align:center;
-    }
-    .btn:hover{background:rgba(255,255,255,.13)}
-    .btn.ghost{background:transparent}
-
-    .hint{font-size:12px;opacity:.7;line-height:1.35;margin-top:8px}
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
   <div class="wrap">
     <div id="grid" class="grid"></div>
   </div>
@@ -127,35 +16,35 @@
   <!-- Settings UI -->
   <div class="gear" id="gear" title="Settings">⚙</div>
 
-  <div class="panel" id="panel" role="dialog" aria-modal="false">
+  <div class="panel" id="panel" role="dialog">
     <h3>Wall settings</h3>
 
     <div class="row">
-      <label for="minTile">Tile size</label>
+      <label>Tile size</label>
       <input id="minTile" type="range" min="160" max="420" step="10">
       <div class="val" id="minTileVal"></div>
     </div>
 
     <div class="row">
-      <label for="dimMax">Dim old tiles</label>
+      <label>Dim old tiles</label>
       <input id="dimMax" type="range" min="0" max="0.80" step="0.01">
       <div class="val" id="dimMaxVal"></div>
     </div>
 
     <div class="row">
-      <label for="satMax">Desaturate old</label>
+      <label>Desaturate old</label>
       <input id="satMax" type="range" min="0" max="0.80" step="0.01">
       <div class="val" id="satMaxVal"></div>
     </div>
 
     <div class="row">
-      <label for="borderMaxA">New border</label>
+      <label>New border</label>
       <input id="borderMaxA" type="range" min="0.10" max="1.00" step="0.01">
       <div class="val" id="borderMaxAVal"></div>
     </div>
 
     <div class="row">
-      <label for="borderMinA">Old border</label>
+      <label>Old border</label>
       <input id="borderMinA" type="range" min="0.00" max="0.40" step="0.01">
       <div class="val" id="borderMinAVal"></div>
     </div>
@@ -166,291 +55,10 @@
     </div>
 
     <div class="hint">
-      Newest = first item in <b>videos.json</b>. Older tiles fade according to list position.
+      Newest = first item in <b>videos.json</b>
     </div>
   </div>
 
-<script>
-  // ----------------------------
-  // Settings (localStorage)
-  // ----------------------------
-  const LS_KEY = "utubee_settings_v1";
-  const DEFAULTS = {
-    minTile: 220,
-    dimMax: 0.45,
-    satMax: 0.25,
-    borderMinA: 0.08,
-    borderMaxA: 0.35
-  };
-
-  function loadSettings(){
-    try{
-      const raw = localStorage.getItem(LS_KEY);
-      if(!raw) return {...DEFAULTS};
-      const obj = JSON.parse(raw);
-      return {...DEFAULTS, ...obj};
-    }catch{
-      return {...DEFAULTS};
-    }
-  }
-
-  function saveSettings(s){
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
-  }
-
-  function applySettingsToRoot(s){
-    const r = document.documentElement.style;
-    r.setProperty("--minTile", `${s.minTile}px`);
-    r.setProperty("--dimMax", String(s.dimMax));
-    r.setProperty("--satMax", String(s.satMax));
-    r.setProperty("--borderMinA", String(s.borderMinA));
-    r.setProperty("--borderMaxA", String(s.borderMaxA));
-  }
-
-  let SETTINGS = loadSettings();
-  applySettingsToRoot(SETTINGS);
-
-  // ----------------------------
-  // YouTube helpers
-  // ----------------------------
-  function parseVideoId(input){
-    const s = String(input||"").trim();
-    if(!s) return null;
-    if(/^[a-zA-Z0-9_-]{8,15}$/.test(s) && !s.includes("http")) return s;
-    try{
-      const u = new URL(s);
-      if(u.hostname.includes("youtu.be")) return u.pathname.replace("/","") || null;
-      if(u.hostname.includes("youtube.com")){
-        if(u.searchParams.get("v")) return u.searchParams.get("v");
-        const m = u.pathname.match(/\/shorts\/([^/]+)/); if(m) return m[1];
-        const e = u.pathname.match(/\/embed\/([^/]+)/); if(e) return e[1];
-      }
-    }catch{}
-    return null;
-  }
-
-  function makeThumbHTML(id){
-    return `
-      <img loading="lazy" src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="">
-      <div class="play" aria-hidden="true">
-        <span title="Play">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </span>
-      </div>
-    `;
-  }
-
-  function makePlayerHTML(id){
-    return `
-      <div class="x" title="Stop">✕</div>
-      <iframe
-        class="player"
-        src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-        allowfullscreen
-        title="YouTube player"></iframe>
-    `;
-  }
-
-  function setTileToThumb(tile, id){
-    tile.dataset.mode = "thumb";
-    tile.innerHTML = makeThumbHTML(id);
-  }
-
-  function setTileToPlayer(tile, id){
-    tile.dataset.mode = "player";
-    tile.innerHTML = makePlayerHTML(id);
-  }
-
-  // ----------------------------
-  // Render wall
-  // ----------------------------
-  const grid = document.getElementById("grid");
-
-  function setAgeVars(tile, index, total){
-    // Age factor: 0 (newest) .. 1 (oldest)
-    const age = (total <= 1) ? 0 : (index / (total - 1));
-
-    // Using settings from CSS variables (set on :root)
-    const dimMax = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dimMax")) || DEFAULTS.dimMax;
-    const satMax = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--satMax")) || DEFAULTS.satMax;
-    const borderMinA = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--borderMinA")) || DEFAULTS.borderMinA;
-    const borderMaxA = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--borderMaxA")) || DEFAULTS.borderMaxA;
-
-    // brightness fades 1.00 -> 1.00-dimMax
-    const b = 1.00 - (age * dimMax);
-
-    // saturation fades 1.00 -> 1.00-satMax
-    const s = 1.00 - (age * satMax);
-
-    // border alpha fades borderMaxA -> borderMinA
-    const borderA = borderMaxA - (age * (borderMaxA - borderMinA));
-
-    tile.style.setProperty("--b", b.toFixed(3));
-    tile.style.setProperty("--s", s.toFixed(3));
-    tile.style.setProperty("--borderA", borderA.toFixed(3));
-  }
-
-  let currentTiles = []; // keep references so settings can reapply without re-fetch
-
-  function reapplyAges(){
-    const total = currentTiles.length;
-    for(let i=0;i<total;i++){
-      const {tile} = currentTiles[i];
-      setAgeVars(tile, i, total);
-    }
-  }
-
-  async function init(){
-    grid.innerHTML = "";
-    currentTiles = [];
-
-    let data;
-    try{
-      const res = await fetch("./videos.json", {cache:"no-store"});
-      data = await res.json();
-    }catch(err){
-      grid.innerHTML = "<div style='opacity:.8;font-size:12px;padding:8px'>Couldn't load videos.json. Create it in the repo root.</div>";
-      return;
-    }
-
-    const urls = data.videos || [];
-    const ids = urls.map(parseVideoId).filter(Boolean);
-
-    if(!ids.length){
-      grid.innerHTML = "<div style='opacity:.8;font-size:12px;padding:8px'>No valid videos in videos.json yet.</div>";
-      return;
-    }
-
-    for(let i = 0; i < ids.length; i++){
-      const id = ids[i];
-
-      const card = document.createElement("div");
-      card.className = "card";
-      if(i === 0) card.classList.add("is-new");
-
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.dataset.id = id;
-
-      setAgeVars(tile, i, ids.length);
-      setTileToThumb(tile, id);
-
-      // Click handling:
-      // - thumb -> player (and stop others)
-      // - player -> only stop when clicking ✕
-      tile.addEventListener("click", (e) => {
-        const id = tile.dataset.id;
-        const mode = tile.dataset.mode;
-
-        if(mode === "thumb") {
-          document.querySelectorAll(".tile[data-mode='player']").forEach(other => {
-            if (other !== tile) setTileToThumb(other, other.dataset.id);
-          });
-          setTileToPlayer(tile, id);
-          return;
-        }
-
-        const x = e.target.closest(".x");
-        if(x) setTileToThumb(tile, id);
-      });
-
-      card.appendChild(tile);
-      grid.appendChild(card);
-
-      currentTiles.push({card, tile});
-    }
-  }
-
-  init();
-
-  // ----------------------------
-  // Settings UI wiring
-  // ----------------------------
-  const gear = document.getElementById("gear");
-  const panel = document.getElementById("panel");
-  const closeBtn = document.getElementById("close");
-  const resetBtn = document.getElementById("reset");
-
-  const inputs = {
-    minTile: document.getElementById("minTile"),
-    dimMax: document.getElementById("dimMax"),
-    satMax: document.getElementById("satMax"),
-    borderMaxA: document.getElementById("borderMaxA"),
-    borderMinA: document.getElementById("borderMinA"),
-  };
-  const vals = {
-    minTile: document.getElementById("minTileVal"),
-    dimMax: document.getElementById("dimMaxVal"),
-    satMax: document.getElementById("satMaxVal"),
-    borderMaxA: document.getElementById("borderMaxAVal"),
-    borderMinA: document.getElementById("borderMinAVal"),
-  };
-
-  function syncUIFromSettings(){
-    inputs.minTile.value = String(SETTINGS.minTile);
-    inputs.dimMax.value = String(SETTINGS.dimMax);
-    inputs.satMax.value = String(SETTINGS.satMax);
-    inputs.borderMinA.value = String(SETTINGS.borderMinA);
-    inputs.borderMaxA.value = String(SETTINGS.borderMaxA);
-    updateValLabels();
-  }
-
-  function updateValLabels(){
-    vals.minTile.textContent = `${inputs.minTile.value}px`;
-    vals.dimMax.textContent = `${Number(inputs.dimMax.value).toFixed(2)}`;
-    vals.satMax.textContent = `${Number(inputs.satMax.value).toFixed(2)}`;
-    vals.borderMaxA.textContent = `${Number(inputs.borderMaxA.value).toFixed(2)}`;
-    vals.borderMinA.textContent = `${Number(inputs.borderMinA.value).toFixed(2)}`;
-  }
-
-  function onAnySettingChange(){
-    SETTINGS = {
-      minTile: Number(inputs.minTile.value),
-      dimMax: Number(inputs.dimMax.value),
-      satMax: Number(inputs.satMax.value),
-      borderMinA: Number(inputs.borderMinA.value),
-      borderMaxA: Number(inputs.borderMaxA.value),
-    };
-    applySettingsToRoot(SETTINGS);
-    saveSettings(SETTINGS);
-    updateValLabels();
-    reapplyAges(); // update dim/border based on position using new settings
-  }
-
-  Object.values(inputs).forEach(inp => {
-    inp.addEventListener("input", onAnySettingChange);
-  });
-
-  gear.addEventListener("click", () => {
-    panel.classList.toggle("on");
-    syncUIFromSettings();
-  });
-
-  closeBtn.addEventListener("click", () => panel.classList.remove("on"));
-
-  resetBtn.addEventListener("click", () => {
-    SETTINGS = {...DEFAULTS};
-    applySettingsToRoot(SETTINGS);
-    saveSettings(SETTINGS);
-    syncUIFromSettings();
-    reapplyAges();
-  });
-
-  // click outside panel to close (but not if you click the gear)
-  document.addEventListener("click", (e) => {
-    if(!panel.classList.contains("on")) return;
-    if(panel.contains(e.target) || gear.contains(e.target)) return;
-    panel.classList.remove("on");
-  });
-
-  // ESC closes settings panel (doesn't stop videos; that's tile ✕)
-  window.addEventListener("keydown", (e) => {
-    if(e.key === "Escape" && panel.classList.contains("on")) panel.classList.remove("on");
-  });
-
-  // initialize UI values (so first open looks right)
-  syncUIFromSettings();
-</script>
+  <script src="wall.js"></script>
 </body>
 </html>
