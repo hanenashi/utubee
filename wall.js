@@ -1,16 +1,23 @@
 /* ===============================
-   v1.1 - manual state tracking
-   green = unseen
-   orange = partial
-   none  = seen
-   Shift-click cycles state
+   v1.2
+   Manual state tracking:
+     green  = unseen
+     orange = partial
+     none   = seen
+
+   Marking:
+     - mobile: long-press a tile
+     - desktop: right-click a tile (contextmenu)
+   Play:
+     - normal click plays in-tile
+     - no automatic state changes on play
 ================================ */
 
 /* -------------------------------
-   Settings (tile size only)
+   UI settings (tile size + border thickness)
 -------------------------------- */
-const LS_SETTINGS = "utubee_settings_v1_1";
-const DEFAULT_SETTINGS = { minTile: 220 };
+const LS_SETTINGS = "utubee_settings_v1_2";
+const DEFAULT_SETTINGS = { minTile: 220, borderW: 1 };
 
 function loadSettings(){
   try{
@@ -26,13 +33,14 @@ let SETTINGS = loadSettings();
 
 function applySettings(){
   document.documentElement.style.setProperty("--minTile", SETTINGS.minTile + "px");
+  document.documentElement.style.setProperty("--borderW", SETTINGS.borderW + "px");
 }
 applySettings();
 
 /* -------------------------------
    State store: id -> "u"|"p"|"s"
 -------------------------------- */
-const LS_STATE = "utubee_states_v1_1";
+const LS_STATE = "utubee_states_v1_2";
 const STATE_UNSEEN = "u";
 const STATE_PARTIAL = "p";
 const STATE_SEEN = "s";
@@ -45,24 +53,15 @@ function loadStates(){
     return {};
   }
 }
-
 function saveStates(states){
   localStorage.setItem(LS_STATE, JSON.stringify(states));
 }
-
 let STATES = loadStates();
 
-function getState(id){
-  return STATES[id] || STATE_UNSEEN;
-}
-
-function setState(id, st){
-  STATES[id] = st;
-  saveStates(STATES);
-}
+function getState(id){ return STATES[id] || STATE_UNSEEN; }
+function setState(id, st){ STATES[id] = st; saveStates(STATES); }
 
 function cycleState(st){
-  // green -> orange -> none -> green
   if(st === STATE_UNSEEN) return STATE_PARTIAL;
   if(st === STATE_PARTIAL) return STATE_SEEN;
   return STATE_UNSEEN;
@@ -73,6 +72,12 @@ function applyCardStateClass(card, st){
   if(st === STATE_PARTIAL) card.classList.add("state-partial");
   else if(st === STATE_SEEN) card.classList.add("state-seen");
   else card.classList.add("state-unseen");
+}
+
+function cycleAndApply(card, id){
+  const next = cycleState(getState(id));
+  setState(id, next);
+  applyCardStateClass(card, next);
 }
 
 /* -------------------------------
@@ -123,10 +128,48 @@ function setTileToThumb(tile, id){
   tile.dataset.mode = "thumb";
   tile.innerHTML = thumbHTML(id);
 }
-
 function setTileToPlayer(tile, id){
   tile.dataset.mode = "player";
   tile.innerHTML = playerHTML(id);
+}
+
+/* -------------------------------
+   Long-press helper (mobile)
+-------------------------------- */
+function attachLongPress(tile, onLongPress, ms=450){
+  let timer = null;
+  let fired = false;
+
+  const start = (e) => {
+    // ignore multi-touch chaos
+    if(e && e.isPrimary === false) return;
+    fired = false;
+    tile.classList.add("pressing");
+    timer = setTimeout(() => {
+      fired = true;
+      onLongPress();
+      cleanup();
+    }, ms);
+  };
+
+  const cleanup = () => {
+    tile.classList.remove("pressing");
+    if(timer){ clearTimeout(timer); timer = null; }
+  };
+
+  tile.addEventListener("pointerdown", (e) => {
+    // ignore right click; desktop uses contextmenu instead
+    if(e.button !== undefined && e.button !== 0) return;
+    // don’t start long-press when pressing stop X
+    if(e.target.closest(".x")) return;
+    start(e);
+  });
+
+  tile.addEventListener("pointerup", cleanup);
+  tile.addEventListener("pointercancel", cleanup);
+  tile.addEventListener("pointerleave", cleanup);
+
+  return () => fired;
 }
 
 /* -------------------------------
@@ -157,8 +200,6 @@ async function init(){
   for(const id of ids){
     const card = document.createElement("div");
     card.className = "card";
-
-    // apply stored state
     applyCardStateClass(card, getState(id));
 
     const tile = document.createElement("div");
@@ -166,38 +207,38 @@ async function init(){
     tile.dataset.id = id;
     setTileToThumb(tile, id);
 
-    tile.addEventListener("click", (e) => {
-      const isShift = !!e.shiftKey;
-      const currentState = getState(id);
+    // Mobile: long-press cycles state
+    let longPressFired = false;
+    const didLongPress = attachLongPress(tile, () => {
+      longPressFired = true;
+      cycleAndApply(card, id);
+    }, 450);
 
-      // SHIFT-CLICK: cycle state, do NOT play
-      if(isShift){
-        const next = cycleState(currentState);
-        setState(id, next);
-        applyCardStateClass(card, next);
+    // Desktop: right-click cycles state (and suppresses context menu)
+    tile.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      cycleAndApply(card, id);
+    });
+
+    // Normal click: play/stop
+    tile.addEventListener("click", (e) => {
+      // swallow the click after long-press
+      if(longPressFired || didLongPress()){
+        longPressFired = false;
         return;
       }
 
-      // Normal click: play/stop behavior
       if(tile.dataset.mode === "thumb"){
-        // Stop any other playing tiles
+        // stop other playing tiles
         document.querySelectorAll(".tile[data-mode='player']").forEach(t => {
           t.dataset.mode = "thumb";
           setTileToThumb(t, t.dataset.id);
         });
-
-        // Optional: auto-bump from green -> orange on first play.
-        // (Does NOT force "seen". User can decide.)
-        if(currentState === STATE_UNSEEN){
-          setState(id, STATE_PARTIAL);
-          applyCardStateClass(card, STATE_PARTIAL);
-        }
-
         setTileToPlayer(tile, id);
         return;
       }
 
-      // Player mode: only stop when hitting ✕
+      // player mode: only stop when clicking ✕
       const x = e.target.closest(".x");
       if(x){
         setTileToThumb(tile, id);
@@ -223,10 +264,15 @@ const resetStatesBtn = $("resetStates");
 
 const minTile = $("minTile");
 const minTileVal = $("minTileVal");
+const borderW = $("borderW");
+const borderWVal = $("borderWVal");
 
 function syncSettingsUI(){
   minTile.value = String(SETTINGS.minTile);
   minTileVal.textContent = `${minTile.value}px`;
+
+  borderW.value = String(SETTINGS.borderW);
+  borderWVal.textContent = `${borderW.value}px`;
 }
 
 gear.addEventListener("click", () => {
@@ -255,17 +301,22 @@ minTile.addEventListener("input", () => {
   minTileVal.textContent = `${minTile.value}px`;
 });
 
+borderW.addEventListener("input", () => {
+  SETTINGS.borderW = Number(borderW.value);
+  saveSettings(SETTINGS);
+  applySettings();
+  borderWVal.textContent = `${borderW.value}px`;
+});
+
 resetStatesBtn.addEventListener("click", () => {
   STATES = {};
   saveStates(STATES);
-  // Re-apply classes without reloading JSON
-  document.querySelectorAll(".card").forEach((card, idx) => {
+
+  document.querySelectorAll(".card").forEach(card => {
     const tile = card.querySelector(".tile");
     if(!tile) return;
-    const id = tile.dataset.id;
     applyCardStateClass(card, STATE_UNSEEN);
   });
 });
 
-/* init UI once */
 syncSettingsUI();
