@@ -16,46 +16,22 @@
   <!-- Settings UI -->
   <div class="gear" id="gear" title="Settings">⚙</div>
 
-  <div class="panel" id="panel" role="dialog">
+  <div class="panel" id="panel" role="dialog" aria-modal="false">
     <h3>Wall settings</h3>
 
     <div class="row">
-      <label>Tile size</label>
+      <label for="minTile">Tile size</label>
       <input id="minTile" type="range" min="160" max="420" step="10">
       <div class="val" id="minTileVal"></div>
     </div>
 
-    <div class="row">
-      <label>Dim old tiles</label>
-      <input id="dimMax" type="range" min="0" max="0.80" step="0.01">
-      <div class="val" id="dimMaxVal"></div>
-    </div>
-
-    <div class="row">
-      <label>Desaturate old</label>
-      <input id="satMax" type="range" min="0" max="0.80" step="0.01">
-      <div class="val" id="satMaxVal"></div>
-    </div>
-
-    <div class="row">
-      <label>New border</label>
-      <input id="borderMaxA" type="range" min="0.10" max="1.00" step="0.01">
-      <div class="val" id="borderMaxAVal"></div>
-    </div>
-
-    <div class="row">
-      <label>Old border</label>
-      <input id="borderMinA" type="range" min="0.00" max="0.40" step="0.01">
-      <div class="val" id="borderMinAVal"></div>
-    </div>
-
     <div class="btns">
-      <div class="btn" id="reset">Reset</div>
+      <div class="btn danger" id="resetStates">Reset seen state</div>
       <div class="btn ghost" id="close">Close</div>
     </div>
 
     <div class="hint">
-      Newest = first item in <b>videos.json</b>
+      Shift-click a tile to cycle: green → orange → none.
     </div>
   </div>
 
