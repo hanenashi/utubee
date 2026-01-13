@@ -37,7 +37,6 @@ body{
   background:#111;
   border: var(--borderW) solid transparent;
 
-  /* mobile friendliness */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -45,19 +44,11 @@ body{
 }
 
 /* Manual states */
-.card.state-unseen .tile{
-  border-color: rgba(120,255,120,0.92); /* green */
-}
+.card.state-unseen .tile{ border-color: rgba(120,255,120,0.92); } /* green */
+.card.state-partial .tile{ border-color: rgba(255,170,70,0.92); } /* orange */
+.card.state-seen .tile{ border-color: transparent; }              /* none */
 
-.card.state-partial .tile{
-  border-color: rgba(255,170,70,0.92);  /* orange */
-}
-
-.card.state-seen .tile{
-  border-color: transparent;            /* none */
-}
-
-/* subtle “pressed” feedback during long-press */
+/* long-press feedback */
 .tile.pressing{
   outline:2px solid rgba(255,255,255,.18);
   outline-offset:-2px;
@@ -137,7 +128,6 @@ body{
   user-select:none;
   z-index:100;
 }
-
 .gear:hover{ background:rgba(255,255,255,.12) }
 
 .panel{
@@ -154,7 +144,6 @@ body{
   z-index:101;
   box-shadow:0 12px 40px rgba(0,0,0,.45);
 }
-
 .panel.on{ display:block }
 
 .panel h3{
@@ -170,7 +159,6 @@ body{
   margin:10px 0;
   gap:10px;
 }
-
 .row label{ font-size:12px; opacity:.85 }
 .row .val{ font-size:12px; opacity:.75; min-width:54px; text-align:right }
 
@@ -181,7 +169,6 @@ input[type="range"]{ width:190px }
   gap:10px;
   margin-top:10px;
 }
-
 .btn{
   flex:1;
   padding:10px;
@@ -193,7 +180,6 @@ input[type="range"]{ width:190px }
   font-size:12px;
   user-select:none;
 }
-
 .btn:hover{ background:rgba(255,255,255,.13) }
 .btn.ghost{ background:transparent }
 .btn.danger{
