@@ -229,16 +229,24 @@
           longPressFired = false;
           return;
         }
+         
+         if(tile.dataset.mode === "thumb"){
+           // stop other playing tiles
+           document.querySelectorAll(".tile[data-mode='player']").forEach(t => {
+             t.dataset.mode = "thumb";
+             setTileToThumb(t, t.dataset.id);
+           });
+         
+           // NEW: pressing play marks as SEEN (border disappears)
+           if(getState(id) !== STATE_SEEN){
+             setState(id, STATE_SEEN);
+             applyCardStateClass(card, STATE_SEEN);
+           }
+         
+           setTileToPlayer(tile, id);
+           return;
+         }
 
-        if(tile.dataset.mode === "thumb"){
-          // stop other playing tiles
-          document.querySelectorAll(".tile[data-mode='player']").forEach(t => {
-            t.dataset.mode = "thumb";
-            setTileToThumb(t, t.dataset.id);
-          });
-          setTileToPlayer(tile, id);
-          return;
-        }
 
         const x = e.target && e.target.closest ? e.target.closest(".x") : null;
         if(x){
