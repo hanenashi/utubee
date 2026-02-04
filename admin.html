@@ -17,8 +17,6 @@
     }
     .btn:hover{background:rgba(255,255,255,.15)}
     .btn.primary{background:rgba(90,140,255,.2);border-color:rgba(90,140,255,.4)}
-    
-    /* Edit Mode State */
     .btn.editing{background:rgba(255,170,70,.25);border-color:rgba(255,170,70,.5);color:#ffdab3;}
 
     .panel{
@@ -34,7 +32,6 @@
     }
     textarea{min-height:100px; font-family:monospace; font-size:12px;}
 
-    /* List Items */
     .list{display:flex;flex-direction:column;gap:8px}
     .item{
       display:grid; grid-template-columns: 30px 60px 1fr 110px; gap:12px;
@@ -64,7 +61,6 @@
     }
     .smallbtn:hover{background:rgba(255,255,255,.1);}
 
-    /* Tabs */
     .tabs{display:flex; gap:10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px;}
     .tab{opacity:.5; cursor:pointer; padding:4px 8px;}
     .tab.active{opacity:1; font-weight:bold; border-bottom:2px solid #fff;}
@@ -102,7 +98,7 @@
     </div>
 
     <div id="formGallery" hidden>
-      <input type="text" id="galTitle" placeholder="Gallery Title (Hidden on wall, used for admin)">
+      <input type="text" id="galTitle" placeholder="Gallery Title">
       <div class="hint">Paste Image URLs (one per line)</div>
       <textarea id="taGal" placeholder="https://host.com/img1.jpg..."></textarea>
       <div class="row">
@@ -126,9 +122,8 @@
 
 <script>
   let items = [];
-  let editIndex = -1; // -1 means "Add Mode", >= 0 means "Edit Mode"
+  let editIndex = -1; 
 
-  // -- Utils --
   function parseVideoId(input){
     const s = String(input||"").trim();
     if(!s) return null;
@@ -144,6 +139,15 @@
   }
 
   function genId(){ return "g_" + Math.random().toString(36).substr(2, 6); }
+  
+  function getThumbUrl(url){
+    if(url.includes("opu.peklo.biz/p/") && !url.includes("/thumbs/")){
+      const parts = url.split("/");
+      const filename = parts.pop();
+      return parts.join("/") + "/thumbs/" + filename;
+    }
+    return url;
+  }
 
   // -- Render --
   function renderList(){
@@ -170,7 +174,7 @@
       } else {
         // Gallery
         const img = item.images[0] || "";
-        thumb = `<img class="thumb" src="${img}">`;
+        thumb = `<img class="thumb" src="${getThumbUrl(img)}">`; // Use thumb logic
         title = item.title;
         meta = `${item.images.length} images`;
         badge = `<span class="type-badge tb-gal">GAL</span>`;
@@ -191,34 +195,25 @@
       
       // Events
       div.querySelector(".rm-btn").onclick = () => {
-        if(editIndex === idx) cancelEdit(); // if deleting item being edited
+        if(editIndex === idx) cancelEdit();
         items.splice(idx, 1);
-        // adjust edit index if we deleted something above it
         if(editIndex > idx) editIndex--; 
         renderList();
       };
 
-      div.querySelector(".edit-btn").onclick = () => {
-        startEdit(idx);
-      };
+      div.querySelector(".edit-btn").onclick = () => { startEdit(idx); };
 
-      // Drag / Drop
       div.addEventListener("dragstart", e => { e.dataTransfer.setData("idx", idx); });
       div.addEventListener("dragover", e => e.preventDefault());
       div.addEventListener("drop", e => {
         e.preventDefault();
         const from = parseInt(e.dataTransfer.getData("idx"));
         if(from === idx) return;
-        
-        // Move item
         const moved = items.splice(from, 1)[0];
         items.splice(idx, 0, moved);
-        
-        // Track edited item if it moved
         if(editIndex === from) editIndex = idx;
         else if(editIndex > from && editIndex <= idx) editIndex--;
         else if(editIndex < from && editIndex >= idx) editIndex++;
-        
         renderList();
       });
 
@@ -231,7 +226,6 @@
     editIndex = idx;
     const item = items[idx];
     
-    // Determine type and switch tab
     if(typeof item === "string"){
       switchTab("video");
       document.getElementById("taVid").value = item;
@@ -242,7 +236,7 @@
       document.getElementById("taGal").value = item.images.join("\n");
       setEditModeUI("gallery", true);
     }
-    renderList(); // highlights item
+    renderList(); 
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
@@ -271,7 +265,7 @@
     }
   }
 
-  // -- Event Listeners --
+  // -- Listeners --
   document.getElementById("load").onclick = async () => {
     try {
       const res = await fetch("content.json", {cache:"no-store"});
@@ -282,7 +276,6 @@
   };
   document.getElementById("clear").onclick = () => { items=[]; cancelEdit(); renderList(); };
 
-  // Tabs
   function switchTab(mode){
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.getElementById(mode === "video" ? "tabVideo" : "tabGallery").classList.add("active");
@@ -290,10 +283,7 @@
     document.getElementById("formGallery").hidden = (mode !== "gallery");
   }
 
-  document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
-    switchTab(t.dataset.mode);
-  });
-
+  document.querySelectorAll(".tab").forEach(t => t.onclick = () => { switchTab(t.dataset.mode); });
   document.getElementById("cancelEditVid").onclick = cancelEdit;
   document.getElementById("cancelEditGal").onclick = cancelEdit;
 
@@ -303,12 +293,10 @@
     if(!lines.length) return;
 
     if(editIndex > -1){
-      // Update (only takes first line for update to keep simple)
       const id = parseVideoId(lines[0]);
       if(id) items[editIndex] = `https://youtu.be/${id}`;
       cancelEdit();
     } else {
-      // Add
       lines.forEach(l => {
         const id = parseVideoId(l);
         if(id) items.push(`https://youtu.be/${id}`);
@@ -327,7 +315,7 @@
 
     const newObj = {
       type: "gallery",
-      id: (editIndex > -1) ? items[editIndex].id : genId(), // preserve ID if editing
+      id: (editIndex > -1) ? items[editIndex].id : genId(), 
       title: title,
       images: rawImgs
     };
@@ -343,7 +331,6 @@
     renderList();
   };
 
-  // Export
   document.getElementById("gen").onclick = () => {
     const json = JSON.stringify({ items: items }, null, 2);
     document.getElementById("out").textContent = json;

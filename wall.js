@@ -1,4 +1,4 @@
-/* utubee v2.1 - Cleaned Gallery Visuals */
+/* utubee v2.2 - Thumbs & Esc Fix */
 
 (() => {
   // --- SETTINGS ---
@@ -66,6 +66,16 @@
     return null;
   }
 
+  // Convert full image URL to thumb URL for opu.peklo.biz
+  function getThumbUrl(url){
+    if(url.includes("opu.peklo.biz/p/") && !url.includes("/thumbs/")){
+      const parts = url.split("/");
+      const filename = parts.pop();
+      return parts.join("/") + "/thumbs/" + filename;
+    }
+    return url;
+  }
+
   // --- DOM & LAYERS ---
   const els = {
     wall: document.getElementById("wallView"),
@@ -92,11 +102,21 @@
     els.wall.hidden = (current !== "wall");
     els.galView.hidden = (current !== "gallery");
     els.lb.hidden = (current !== "lightbox");
+    
     if(current === "lightbox") els.lb.focus();
   }
 
-  function pushView(v){ viewStack.push(v); updateViewVisibility(); }
-  function popView(){ if(viewStack.length > 1) viewStack.pop(); updateViewVisibility(); }
+  function pushView(v){ 
+    viewStack.push(v); 
+    updateViewVisibility(); 
+  }
+  
+  function popView(){ 
+    if(viewStack.length > 1) {
+      viewStack.pop(); 
+      updateViewVisibility();
+    }
+  }
 
   // --- RENDERERS ---
 
@@ -138,7 +158,7 @@
     return tile;
   }
 
-  // 2. GALLERY TILE (Clean)
+  // 2. GALLERY TILE (Fixed Layout)
   function createGalleryTile(item){
     const tile = document.createElement("div");
     tile.className = "tile gallery-tile";
@@ -147,10 +167,10 @@
     const previews = item.images.slice(0, 6);
     let html = "";
     previews.forEach(img => {
-      html += `<img loading="lazy" src="${img}">`;
+      // Use helper to transform to thumb URL
+      html += `<img loading="lazy" src="${getThumbUrl(img)}">`;
     });
     
-    // Note: No Label, No Icon. Just grid.
     tile.innerHTML = html;
 
     tile.addEventListener("click", () => {
@@ -169,12 +189,19 @@
     els.galGrid.innerHTML = "";
     activeGallery = { images: item.images, title: item.title };
 
+    // Here we assume gallery DETAIL view prefers full images, 
+    // but you could use thumbs here too if you wanted. 
+    // Using full images for now as "thumbnails" for the detail grid.
     item.images.forEach((url, idx) => {
       const card = document.createElement("div");
       card.className = "card state-seen"; 
       const tile = document.createElement("div");
       tile.className = "tile";
-      tile.innerHTML = `<img class="vid-thumb" loading="lazy" src="${url}">`;
+      
+      // Use thumbs here too for performance if you like?
+      // Let's use thumbs for the grid view, then full on click
+      tile.innerHTML = `<img class="vid-thumb" loading="lazy" src="${getThumbUrl(url)}">`;
+      
       tile.addEventListener("click", () => openLightbox(idx));
       card.appendChild(tile);
       els.galGrid.appendChild(card);
@@ -189,7 +216,7 @@
   function updateLightbox(){
     if(!activeGallery) return;
     const url = activeGallery.images[lbIndex];
-    els.lbImg.src = url;
+    els.lbImg.src = url; // Full res for lightbox
     els.lbCount.textContent = `${lbIndex + 1} / ${activeGallery.images.length}`;
   }
 
@@ -205,9 +232,18 @@
   els.lbClose.addEventListener("click", popView);
   els.galBack.addEventListener("click", popView);
 
+  // Global Keydown (ESC Fix)
   window.addEventListener("keydown", (e) => {
     const current = viewStack[viewStack.length - 1];
-    if(e.key === "Escape"){ if(current !== "wall") popView(); }
+    
+    if(e.key === "Escape"){
+      if(current !== "wall"){
+        e.preventDefault();
+        e.stopPropagation();
+        popView();
+      }
+    }
+    
     if(current === "lightbox"){
       if(e.key === "ArrowLeft") lbNav(-1);
       if(e.key === "ArrowRight") lbNav(1);
