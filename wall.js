@@ -1,4 +1,4 @@
-/* utubee v2.5 - Solid Loupe */
+/* utubee v2.6 - Fullscreen & Hidden Cursor */
 
 (() => {
   // --- SETTINGS ---
@@ -108,17 +108,32 @@
   }
 
   function pushView(v){ viewStack.push(v); updateViewVisibility(); }
+  
   function popView(){ 
-    if(viewStack.length > 1) { viewStack.pop(); updateViewVisibility(); }
+    if(viewStack.length > 1) {
+      // If we are leaving the lightbox, exit fullscreen too
+      if(viewStack[viewStack.length - 1] === "lightbox"){
+        if(document.fullscreenElement) {
+          document.exitFullscreen().catch(()=>{});
+        }
+      }
+      viewStack.pop(); 
+      updateViewVisibility(); 
+    }
   }
 
-  // --- GLOBAL KEYS (ESC FIX) ---
+  // --- GLOBAL KEYS ---
   window.addEventListener("keydown", (e) => {
     const current = viewStack[viewStack.length - 1];
     if(e.key === "Escape"){
       if(current !== "wall"){
-        e.preventDefault(); e.stopImmediatePropagation();
-        popView(); return;
+        // Browser handles "Exit Fullscreen" on ESC automatically.
+        // We only pop view if we are NOT in fullscreen (meaning user pressed ESC twice)
+        if(!document.fullscreenElement){
+           e.preventDefault(); e.stopImmediatePropagation();
+           popView(); 
+        }
+        return;
       }
     }
     if(current === "lightbox"){
@@ -186,7 +201,6 @@
     return tile;
   }
 
-  // --- LOGIC: GALLERY VIEW ---
   function openGalleryView(item){
     els.galTitle.textContent = item.title;
     els.galGrid.innerHTML = "";
@@ -205,7 +219,7 @@
     pushView("gallery");
   }
 
-  // --- LOGIC: LIGHTBOX (Loupe) ---
+  // --- LOGIC: LIGHTBOX (Fullscreen + Loupe) ---
   let lbIndex = 0;
   let isZooming = false;
 
@@ -214,6 +228,12 @@
     resetZoom(); 
     updateLightbox(); 
     pushView("lightbox"); 
+
+    // TRIGGER FULLSCREEN
+    els.lb.requestFullscreen().catch(err => {
+      // Fail silently (e.g. if permissions denied)
+      console.log("Fullscreen blocked:", err);
+    });
   }
 
   function updateLightbox(){
@@ -234,12 +254,10 @@
   function updateZoom(e){
     if(!isZooming) return;
     
-    // Calculate mouse position relative to the image element
     const rect = els.lbImg.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Percentage for transform-origin
     const pX = (x / rect.width) * 100;
     const pY = (y / rect.height) * 100;
     
@@ -253,38 +271,29 @@
     updateLightbox();
   }
 
-  // Mouse Listeners
   els.lbImg.addEventListener("pointerdown", (e) => {
     if(e.button !== 0) return;
-    
-    // Only allow zoom if image is actually high-res enough to matter
-    // (Or just check if natural width is > visible)
     if(els.lbImg.naturalWidth <= els.lbImg.clientWidth + 50) return; 
 
-    e.preventDefault(); // Stop text selection / ghost drag
+    e.preventDefault(); 
     isZooming = true;
     els.lbImg.classList.add("zooming");
     
-    // Scale Logic: Calculate ratio of Natural / Visible
     const scale = els.lbImg.naturalWidth / els.lbImg.clientWidth;
     els.lbImg.style.transform = `scale(${scale})`;
     
-    updateZoom(e); // Set initial pivot
+    updateZoom(e); 
   });
 
   window.addEventListener("pointermove", (e) => {
     if(isZooming){
-      e.preventDefault(); // Stop scrolling while dragging
+      e.preventDefault(); 
       updateZoom(e);
     }
   });
 
-  window.addEventListener("pointerup", () => {
-    if(isZooming) resetZoom();
-  });
-  window.addEventListener("pointercancel", () => {
-    if(isZooming) resetZoom();
-  });
+  window.addEventListener("pointerup", () => { if(isZooming) resetZoom(); });
+  window.addEventListener("pointercancel", () => { if(isZooming) resetZoom(); });
 
   els.lbPrev.addEventListener("click", (e) => { e.stopPropagation(); lbNav(-1); });
   els.lbNext.addEventListener("click", (e) => { e.stopPropagation(); lbNav(1); });
