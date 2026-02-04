@@ -7,7 +7,7 @@
 body{
   margin:0; background:#0b0b0f; color:#e9e9ee;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  overflow-y: scroll; /* keep scrollbar to prevent jumps */
+  overflow-y: scroll;
 }
 
 /* Global Wrap */
@@ -49,28 +49,21 @@ body{
 /* Video Thumb */
 .tile img.vid-thumb{ width:100%; height:100%; object-fit:cover; display:block; }
 
-/* --- GALLERY CARD FIXES --- */
+/* --- GALLERY CARD --- */
 .tile.gallery-tile{
-  /* FORCE the grid to stay inside 16:9 */
   height: 100%; 
   overflow: hidden;
-  
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 2px;       /* Smaller gap */
-  padding: 2px;   /* Smaller padding */
+  gap: 2px;
+  padding: 2px;
   background: #000;
   box-sizing: border-box; 
 }
-
 .tile.gallery-tile img{
-  width:100%; 
-  height:100%; 
-  object-fit: cover; 
-  border-radius: 2px; 
-  background: #1a1a1a; 
-  display: block;
+  width:100%; height:100%; object-fit: cover; 
+  border-radius: 2px; background: #1a1a1a; display: block;
 }
 
 /* Player UI */
@@ -96,13 +89,10 @@ body{
 /* --- LAYERS --- */
 .layer{
   position: fixed; inset: 0; background: #0b0b0f;
-  z-index: 500; 
-  overflow-y: auto;
+  z-index: 500; overflow-y: auto;
   display: flex; flex-direction: column;
 }
 .layer[hidden]{ display:none; }
-
-/* IMPORTANT: Ensure wrap inside layer has width to allow grid to calculate columns */
 .layer .wrap { width: 100%; }
 
 /* Gallery View */
@@ -126,18 +116,33 @@ body{
   background: #000; z-index: 600; 
   display: flex; align-items: center; justify-content: center;
   outline: none;
+  overflow: hidden; /* Important for zoom drag not to scroll page */
 }
 .lb-img-wrap{
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden; /* Hide parts of image that zoom out */
 }
 .lb-img-wrap img{
+  /* Switch from object-fit to max-size logic so exact dimensions match DOM for zoom math */
+  width: auto; height: auto;
   max-width: 100%; max-height: 100%;
-  object-fit: contain; user-select: none;
+  object-fit: contain;
+  user-select: none;
+  cursor: zoom-in;
+  transition: transform 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1); /* Smooth follow */
+  will-change: transform;
 }
+.lb-img-wrap img.zooming{
+  cursor: grab;
+  max-width: none; max-height: none; /* Unlock size constraints */
+  transition: none; /* Instant update for drag responsiveness */
+}
+
+/* Controls */
 .lb-ctrl{
   position: absolute; top: 50%; transform: translateY(-50%);
-  width: 80px; height: 100%; /* Larger click area */
+  width: 80px; height: 100%;
   display: flex; align-items: center; justify-content: center;
   font-size: 40px; color: rgba(255,255,255,0.5);
   cursor: pointer; user-select: none; transition: color 0.2s;

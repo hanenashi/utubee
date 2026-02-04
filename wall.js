@@ -1,4 +1,4 @@
-/* utubee v2.3 - Layout & ESC Fixes */
+/* utubee v2.4 - Loupe Zoom */
 
 (() => {
   // --- SETTINGS ---
@@ -66,7 +66,6 @@
     return null;
   }
 
-  // Auto-use thumbnails if opu.peklo.biz
   function getThumbUrl(url){
     if(url && url.includes("opu.peklo.biz/p/") && !url.includes("/thumbs/")){
       const parts = url.split("/");
@@ -95,57 +94,40 @@
   };
 
   let activeGallery = null; 
-  let viewStack = ["wall"]; // stack of view IDs
+  let viewStack = ["wall"]; 
 
   function updateViewVisibility(){
     const current = viewStack[viewStack.length - 1];
-    
-    // Toggle layers
     els.wall.hidden = (current !== "wall");
     els.galView.hidden = (current !== "gallery");
     els.lb.hidden = (current !== "lightbox");
     
-    // Manage Focus for keydown events
     if(current === "lightbox") els.lb.focus();
     else if(current === "gallery") els.galView.focus();
     else window.focus();
   }
 
-  function pushView(v){ 
-    viewStack.push(v); 
-    updateViewVisibility(); 
-  }
-  
+  function pushView(v){ viewStack.push(v); updateViewVisibility(); }
   function popView(){ 
-    if(viewStack.length > 1) {
-      viewStack.pop(); 
-      updateViewVisibility();
-    }
+    if(viewStack.length > 1) { viewStack.pop(); updateViewVisibility(); }
   }
 
   // --- GLOBAL KEYS (ESC FIX) ---
-  // We use window capture to ensure we catch it before anything else swallows it
   window.addEventListener("keydown", (e) => {
     const current = viewStack[viewStack.length - 1];
-
     if(e.key === "Escape"){
       if(current !== "wall"){
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        popView();
-        return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        popView(); return;
       }
     }
-
     if(current === "lightbox"){
       if(e.key === "ArrowLeft") lbNav(-1);
       if(e.key === "ArrowRight") lbNav(1);
     }
-  }, true); // useCapture = true is important here
+  }, true);
 
   // --- RENDERERS ---
-
-  // 1. VIDEO TILE
   function createVideoTile(url, id){
     const tile = document.createElement("div");
     tile.className = "tile";
@@ -159,7 +141,6 @@
     `;
     
     tile.addEventListener("click", (e) => {
-      // Close player button
       if(e.target.closest(".x")){
         tile.dataset.mode = "thumb";
         tile.innerHTML = `
@@ -168,12 +149,8 @@
         `;
         return;
       }
-      
-      // Play
       if(tile.dataset.mode === "thumb"){
-        // Stop others
         document.querySelectorAll(".tile[data-mode='player']").forEach(t => t.click()); 
-        
         if(getState(id) !== STATE_SEEN){
           setState(id, STATE_SEEN);
           applyCardStateClass(tile.closest(".card"), STATE_SEEN);
@@ -188,7 +165,6 @@
     return tile;
   }
 
-  // 2. GALLERY TILE (Mini Grid)
   function createGalleryTile(item){
     const tile = document.createElement("div");
     tile.className = "tile gallery-tile";
@@ -200,7 +176,6 @@
     });
     
     tile.innerHTML = html;
-
     tile.addEventListener("click", () => {
        if(getState(item.id) !== STATE_SEEN){
          setState(item.id, STATE_SEEN);
@@ -217,33 +192,60 @@
     els.galGrid.innerHTML = "";
     activeGallery = { images: item.images, title: item.title };
 
-    // Render Grid
     item.images.forEach((url, idx) => {
       const card = document.createElement("div");
       card.className = "card state-seen"; 
       const tile = document.createElement("div");
       tile.className = "tile";
-      
-      // Use Thumb for grid view
       tile.innerHTML = `<img class="vid-thumb" loading="lazy" src="${getThumbUrl(url)}">`;
-      
       tile.addEventListener("click", () => openLightbox(idx));
       card.appendChild(tile);
       els.galGrid.appendChild(card);
     });
-    
     pushView("gallery");
   }
 
-  // --- LOGIC: LIGHTBOX ---
+  // --- LOGIC: LIGHTBOX (Zoom Enhanced) ---
   let lbIndex = 0;
-  function openLightbox(idx){ lbIndex = idx; updateLightbox(); pushView("lightbox"); }
+  
+  // State for zoom drag
+  let isZooming = false;
+  
+  function openLightbox(idx){ 
+    lbIndex = idx; 
+    resetZoom(); // Clear any previous zoom state
+    updateLightbox(); 
+    pushView("lightbox"); 
+  }
 
   function updateLightbox(){
     if(!activeGallery) return;
     const url = activeGallery.images[lbIndex];
-    els.lbImg.src = url; // Load full res
+    els.lbImg.src = url; 
     els.lbCount.textContent = `${lbIndex + 1} / ${activeGallery.images.length}`;
+    resetZoom();
+  }
+
+  function resetZoom(){
+    isZooming = false;
+    els.lbImg.classList.remove("zooming");
+    els.lbImg.style.transform = "";
+    els.lbImg.style.transformOrigin = "";
+  }
+
+  function updateZoom(e){
+    if(!isZooming) return;
+    
+    // Calculate mouse position relative to image
+    const rect = els.lbImg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Percentage for transform-origin
+    const pX = (x / rect.width) * 100;
+    const pY = (y / rect.height) * 100;
+    
+    els.lbImg.style.transformOrigin = `${pX}% ${pY}%`;
   }
 
   function lbNav(dir){
@@ -252,6 +254,32 @@
     lbIndex = (lbIndex + dir + len) % len;
     updateLightbox();
   }
+
+  // Mouse Listeners for "Loupe"
+  els.lbImg.addEventListener("pointerdown", (e) => {
+    if(e.button !== 0) return;
+    
+    // Only zoom if image is actually larger than screen
+    if(els.lbImg.naturalWidth <= els.lbImg.clientWidth) return;
+
+    e.preventDefault();
+    isZooming = true;
+    els.lbImg.classList.add("zooming");
+    
+    // Calculate scale factor (Natural / Displayed)
+    const scale = els.lbImg.naturalWidth / els.lbImg.clientWidth;
+    els.lbImg.style.transform = `scale(${scale})`;
+    
+    updateZoom(e); // Set initial origin
+  });
+
+  window.addEventListener("pointermove", (e) => {
+    if(isZooming) updateZoom(e);
+  });
+
+  window.addEventListener("pointerup", () => {
+    if(isZooming) resetZoom();
+  });
 
   els.lbPrev.addEventListener("click", (e) => { e.stopPropagation(); lbNav(-1); });
   els.lbNext.addEventListener("click", (e) => { e.stopPropagation(); lbNav(1); });
@@ -268,7 +296,6 @@
     }catch(e){ return; }
 
     const items = data.items || [];
-    
     items.forEach(item => {
       const isGallery = (typeof item === "object" && item.type === "gallery");
       const id = getItemId(item);
@@ -280,7 +307,6 @@
 
       let tile = isGallery ? createGalleryTile(item) : createVideoTile(item, id);
 
-      // Manual State (Long Press / Right Click)
       let longPressFired = false;
       let timer = null;
       const onLong = () => {
