@@ -18,6 +18,9 @@
     .btn:hover{background:rgba(255,255,255,.15)}
     .btn.primary{background:rgba(90,140,255,.2);border-color:rgba(90,140,255,.4)}
     
+    /* Edit Mode State */
+    .btn.editing{background:rgba(255,170,70,.25);border-color:rgba(255,170,70,.5);color:#ffdab3;}
+
     .panel{
       border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04);
       border-radius:16px; padding:16px; margin-bottom: 20px;
@@ -34,9 +37,13 @@
     /* List Items */
     .list{display:flex;flex-direction:column;gap:8px}
     .item{
-      display:grid; grid-template-columns: 30px 60px 1fr 60px; gap:12px;
+      display:grid; grid-template-columns: 30px 60px 1fr 110px; gap:12px;
       align-items:center; padding:8px; border-radius:10px;
       background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+      transition: background 0.2s;
+    }
+    .item.editing-item{
+      background:rgba(255,170,70,.08); border-color:rgba(255,170,70,.3);
     }
     .handle{cursor:grab; opacity:.5; text-align:center;}
     .thumb{width:60px; height:34px; background:#000; object-fit:cover; display:block; border-radius:4px;}
@@ -50,6 +57,13 @@
     .tb-vid{background:rgba(255,0,0,0.3); color:#ffbfbf;}
     .tb-gal{background:rgba(0,255,100,0.2); color:#bfffda;}
 
+    .actions{display:flex; gap:6px; justify-content:flex-end;}
+    .smallbtn{
+      padding:6px 10px; font-size:11px; border-radius:8px; cursor:pointer;
+      border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05);
+    }
+    .smallbtn:hover{background:rgba(255,255,255,.1);}
+
     /* Tabs */
     .tabs{display:flex; gap:10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px;}
     .tab{opacity:.5; cursor:pointer; padding:4px 8px;}
@@ -60,7 +74,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h2>utubee admin (Mixed Content)</h2>
+  <h2>utubee admin</h2>
   
   <div class="panel">
     <h3>1) Load Content</h3>
@@ -72,23 +86,29 @@
   </div>
 
   <div class="panel">
-    <h3>2) Add Item</h3>
+    <h3>2) Add / Edit Item</h3>
     <div class="tabs">
-      <div class="tab active" data-mode="video">Add Video</div>
-      <div class="tab" data-mode="gallery">Add Gallery</div>
+      <div class="tab active" data-mode="video" id="tabVideo">Video</div>
+      <div class="tab" data-mode="gallery" id="tabGallery">Gallery</div>
     </div>
 
     <div id="formVideo">
-      <div class="hint">Paste YouTube links (one per line)</div>
+      <div class="hint">Enter YouTube link</div>
       <textarea id="taVid" placeholder="https://youtu.be/..."></textarea>
-      <div class="btn primary" id="addVid">Add Videos</div>
+      <div class="row">
+        <div class="btn primary" id="btnVid">Add Video</div>
+        <div class="btn" id="cancelEditVid" hidden>Cancel Edit</div>
+      </div>
     </div>
 
     <div id="formGallery" hidden>
-      <input type="text" id="galTitle" placeholder="Gallery Title (e.g. Summer Trip)">
+      <input type="text" id="galTitle" placeholder="Gallery Title (Hidden on wall, used for admin)">
       <div class="hint">Paste Image URLs (one per line)</div>
       <textarea id="taGal" placeholder="https://host.com/img1.jpg..."></textarea>
-      <div class="btn primary" id="addGal">Create Gallery</div>
+      <div class="row">
+        <div class="btn primary" id="btnGal">Create Gallery</div>
+        <div class="btn" id="cancelEditGal" hidden>Cancel Edit</div>
+      </div>
     </div>
   </div>
 
@@ -105,7 +125,8 @@
 </div>
 
 <script>
-  let items = []; // Can contain Strings (URL) or Objects (Gallery)
+  let items = [];
+  let editIndex = -1; // -1 means "Add Mode", >= 0 means "Edit Mode"
 
   // -- Utils --
   function parseVideoId(input){
@@ -124,6 +145,7 @@
 
   function genId(){ return "g_" + Math.random().toString(36).substr(2, 6); }
 
+  // -- Render --
   function renderList(){
     const elList = document.getElementById("list");
     elList.innerHTML = "";
@@ -132,6 +154,8 @@
     items.forEach((item, idx) => {
       const div = document.createElement("div");
       div.className = "item";
+      if(idx === editIndex) div.classList.add("editing-item");
+      
       div.draggable = true;
       
       let thumb = "", title = "", meta = "", badge = "";
@@ -159,28 +183,92 @@
           <div class="title">${badge} ${title}</div>
           <div class="meta">${meta}</div>
         </div>
-        <div class="btn" style="padding:4px 8px;font-size:11px">✕</div>
+        <div class="actions">
+          <div class="smallbtn edit-btn">Edit</div>
+          <div class="smallbtn rm-btn">✕</div>
+        </div>
       `;
       
-      // Remove
-      div.querySelector(".btn").onclick = () => {
+      // Events
+      div.querySelector(".rm-btn").onclick = () => {
+        if(editIndex === idx) cancelEdit(); // if deleting item being edited
         items.splice(idx, 1);
+        // adjust edit index if we deleted something above it
+        if(editIndex > idx) editIndex--; 
         renderList();
       };
 
-      // Drag / Drop (Simple reorder)
+      div.querySelector(".edit-btn").onclick = () => {
+        startEdit(idx);
+      };
+
+      // Drag / Drop
       div.addEventListener("dragstart", e => { e.dataTransfer.setData("idx", idx); });
       div.addEventListener("dragover", e => e.preventDefault());
       div.addEventListener("drop", e => {
         e.preventDefault();
-        const from = e.dataTransfer.getData("idx");
+        const from = parseInt(e.dataTransfer.getData("idx"));
+        if(from === idx) return;
+        
+        // Move item
         const moved = items.splice(from, 1)[0];
         items.splice(idx, 0, moved);
+        
+        // Track edited item if it moved
+        if(editIndex === from) editIndex = idx;
+        else if(editIndex > from && editIndex <= idx) editIndex--;
+        else if(editIndex < from && editIndex >= idx) editIndex++;
+        
         renderList();
       });
 
       elList.appendChild(div);
     });
+  }
+
+  // -- Edit Logic --
+  function startEdit(idx){
+    editIndex = idx;
+    const item = items[idx];
+    
+    // Determine type and switch tab
+    if(typeof item === "string"){
+      switchTab("video");
+      document.getElementById("taVid").value = item;
+      setEditModeUI("video", true);
+    } else {
+      switchTab("gallery");
+      document.getElementById("galTitle").value = item.title;
+      document.getElementById("taGal").value = item.images.join("\n");
+      setEditModeUI("gallery", true);
+    }
+    renderList(); // highlights item
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function cancelEdit(){
+    editIndex = -1;
+    document.getElementById("taVid").value = "";
+    document.getElementById("galTitle").value = "";
+    document.getElementById("taGal").value = "";
+    setEditModeUI("video", false);
+    setEditModeUI("gallery", false);
+    renderList();
+  }
+
+  function setEditModeUI(type, isEditing){
+    const btn = type === "video" ? document.getElementById("btnVid") : document.getElementById("btnGal");
+    const cancel = type === "video" ? document.getElementById("cancelEditVid") : document.getElementById("cancelEditGal");
+    
+    if(isEditing){
+      btn.textContent = type === "video" ? "Update Video" : "Update Gallery";
+      btn.classList.add("editing");
+      cancel.hidden = false;
+    } else {
+      btn.textContent = type === "video" ? "Add Video" : "Create Gallery";
+      btn.classList.remove("editing");
+      cancel.hidden = true;
+    }
   }
 
   // -- Event Listeners --
@@ -192,45 +280,66 @@
       renderList();
     } catch { alert("Could not load content.json"); }
   };
-
-  document.getElementById("clear").onclick = () => { items=[]; renderList(); };
+  document.getElementById("clear").onclick = () => { items=[]; cancelEdit(); renderList(); };
 
   // Tabs
-  const tabs = document.querySelectorAll(".tab");
-  tabs.forEach(t => t.onclick = () => {
-    tabs.forEach(x => x.classList.remove("active"));
-    t.classList.add("active");
-    document.getElementById("formVideo").hidden = (t.dataset.mode !== "video");
-    document.getElementById("formGallery").hidden = (t.dataset.mode !== "gallery");
+  function switchTab(mode){
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.getElementById(mode === "video" ? "tabVideo" : "tabGallery").classList.add("active");
+    document.getElementById("formVideo").hidden = (mode !== "video");
+    document.getElementById("formGallery").hidden = (mode !== "gallery");
+  }
+
+  document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+    switchTab(t.dataset.mode);
   });
 
-  // Add Video
-  document.getElementById("addVid").onclick = () => {
-    const lines = document.getElementById("taVid").value.split("\n");
-    lines.forEach(l => {
-      const id = parseVideoId(l);
-      if(id) items.push(`https://youtu.be/${id}`);
-    });
-    document.getElementById("taVid").value = "";
+  document.getElementById("cancelEditVid").onclick = cancelEdit;
+  document.getElementById("cancelEditGal").onclick = cancelEdit;
+
+  // Add/Update Video
+  document.getElementById("btnVid").onclick = () => {
+    const lines = document.getElementById("taVid").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    if(!lines.length) return;
+
+    if(editIndex > -1){
+      // Update (only takes first line for update to keep simple)
+      const id = parseVideoId(lines[0]);
+      if(id) items[editIndex] = `https://youtu.be/${id}`;
+      cancelEdit();
+    } else {
+      // Add
+      lines.forEach(l => {
+        const id = parseVideoId(l);
+        if(id) items.push(`https://youtu.be/${id}`);
+      });
+      document.getElementById("taVid").value = "";
+    }
     renderList();
   };
 
-  // Add Gallery
-  document.getElementById("addGal").onclick = () => {
+  // Add/Update Gallery
+  document.getElementById("btnGal").onclick = () => {
     const title = document.getElementById("galTitle").value.trim();
     const rawImgs = document.getElementById("taGal").value.split("\n").map(s=>s.trim()).filter(Boolean);
     
     if(!title || !rawImgs.length) return alert("Title and Images required");
 
-    items.push({
+    const newObj = {
       type: "gallery",
-      id: genId(), // Generate stable ID on creation
+      id: (editIndex > -1) ? items[editIndex].id : genId(), // preserve ID if editing
       title: title,
       images: rawImgs
-    });
+    };
 
-    document.getElementById("galTitle").value = "";
-    document.getElementById("taGal").value = "";
+    if(editIndex > -1){
+      items[editIndex] = newObj;
+      cancelEdit();
+    } else {
+      items.push(newObj);
+      document.getElementById("galTitle").value = "";
+      document.getElementById("taGal").value = "";
+    }
     renderList();
   };
 
@@ -238,7 +347,7 @@
   document.getElementById("gen").onclick = () => {
     const json = JSON.stringify({ items: items }, null, 2);
     document.getElementById("out").textContent = json;
-    navigator.clipboard.writeText(json).then(()=>alert("Copied to clipboard!"));
+    navigator.clipboard.writeText(json).then(()=>alert("Copied JSON!"));
   };
 
   renderList();
