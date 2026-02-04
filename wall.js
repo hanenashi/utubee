@@ -1,4 +1,4 @@
-/* utubee v2.4 - Loupe Zoom */
+/* utubee v2.5 - Solid Loupe */
 
 (() => {
   // --- SETTINGS ---
@@ -205,15 +205,13 @@
     pushView("gallery");
   }
 
-  // --- LOGIC: LIGHTBOX (Zoom Enhanced) ---
+  // --- LOGIC: LIGHTBOX (Loupe) ---
   let lbIndex = 0;
-  
-  // State for zoom drag
   let isZooming = false;
-  
+
   function openLightbox(idx){ 
     lbIndex = idx; 
-    resetZoom(); // Clear any previous zoom state
+    resetZoom(); 
     updateLightbox(); 
     pushView("lightbox"); 
   }
@@ -236,7 +234,7 @@
   function updateZoom(e){
     if(!isZooming) return;
     
-    // Calculate mouse position relative to image
+    // Calculate mouse position relative to the image element
     const rect = els.lbImg.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -255,29 +253,36 @@
     updateLightbox();
   }
 
-  // Mouse Listeners for "Loupe"
+  // Mouse Listeners
   els.lbImg.addEventListener("pointerdown", (e) => {
     if(e.button !== 0) return;
     
-    // Only zoom if image is actually larger than screen
-    if(els.lbImg.naturalWidth <= els.lbImg.clientWidth) return;
+    // Only allow zoom if image is actually high-res enough to matter
+    // (Or just check if natural width is > visible)
+    if(els.lbImg.naturalWidth <= els.lbImg.clientWidth + 50) return; 
 
-    e.preventDefault();
+    e.preventDefault(); // Stop text selection / ghost drag
     isZooming = true;
     els.lbImg.classList.add("zooming");
     
-    // Calculate scale factor (Natural / Displayed)
+    // Scale Logic: Calculate ratio of Natural / Visible
     const scale = els.lbImg.naturalWidth / els.lbImg.clientWidth;
     els.lbImg.style.transform = `scale(${scale})`;
     
-    updateZoom(e); // Set initial origin
+    updateZoom(e); // Set initial pivot
   });
 
   window.addEventListener("pointermove", (e) => {
-    if(isZooming) updateZoom(e);
+    if(isZooming){
+      e.preventDefault(); // Stop scrolling while dragging
+      updateZoom(e);
+    }
   });
 
   window.addEventListener("pointerup", () => {
+    if(isZooming) resetZoom();
+  });
+  window.addEventListener("pointercancel", () => {
     if(isZooming) resetZoom();
   });
 

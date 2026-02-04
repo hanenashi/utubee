@@ -10,7 +10,6 @@ body{
   overflow-y: scroll;
 }
 
-/* Global Wrap */
 .wrap{ max-width:1200px; margin:0 auto; padding:14px 16px 40px; box-sizing: border-box; }
 
 .grid{
@@ -26,7 +25,6 @@ body{
   transition: opacity 0.2s;
 }
 
-/* Tile base */
 .tile{
   position:relative; 
   aspect-ratio:16/9; 
@@ -37,36 +35,27 @@ body{
   user-select: none; touch-action: manipulation;
 }
 
-/* Manual states */
 .card.state-unseen .tile{ border-color: rgba(120,255,120,0.92); }
 .card.state-partial .tile{ border-color: rgba(255,170,70,0.92); }
 .card.state-seen .tile{ border-color: transparent; }
 
-.tile.pressing{
-  outline:2px solid rgba(255,255,255,.18); outline-offset:-2px;
-}
+.tile.pressing{ outline:2px solid rgba(255,255,255,.18); outline-offset:-2px; }
 
-/* Video Thumb */
 .tile img.vid-thumb{ width:100%; height:100%; object-fit:cover; display:block; }
 
-/* --- GALLERY CARD --- */
 .tile.gallery-tile{
-  height: 100%; 
-  overflow: hidden;
+  height: 100%; overflow: hidden;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 2px;
-  padding: 2px;
-  background: #000;
-  box-sizing: border-box; 
+  gap: 2px; padding: 2px;
+  background: #000; box-sizing: border-box; 
 }
 .tile.gallery-tile img{
   width:100%; height:100%; object-fit: cover; 
   border-radius: 2px; background: #1a1a1a; display: block;
 }
 
-/* Player UI */
 .play{
   position:absolute; inset:0; display:grid; place-items:center;
   background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.05));
@@ -95,7 +84,6 @@ body{
 .layer[hidden]{ display:none; }
 .layer .wrap { width: 100%; }
 
-/* Gallery View */
 .layer-header{
   position: sticky; top:0;
   background: rgba(11,11,15,0.95); backdrop-filter: blur(10px);
@@ -115,31 +103,30 @@ body{
 .lightbox-layer{
   background: #000; z-index: 600; 
   display: flex; align-items: center; justify-content: center;
-  outline: none;
-  overflow: hidden; /* Important for zoom drag not to scroll page */
+  outline: none; overflow: hidden;
+  touch-action: none; /* Disable native pan/zoom on mobile */
 }
 .lb-img-wrap{
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden; /* Hide parts of image that zoom out */
+  overflow: hidden;
 }
 .lb-img-wrap img{
-  /* Switch from object-fit to max-size logic so exact dimensions match DOM for zoom math */
   width: auto; height: auto;
   max-width: 100%; max-height: 100%;
   object-fit: contain;
   user-select: none;
+  -webkit-user-drag: none; /* KEY FIX: Kills ghost image drag */
   cursor: zoom-in;
-  transition: transform 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1); /* Smooth follow */
+  transition: transform 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1);
   will-change: transform;
 }
 .lb-img-wrap img.zooming{
   cursor: grab;
-  max-width: none; max-height: none; /* Unlock size constraints */
-  transition: none; /* Instant update for drag responsiveness */
+  /* We do NOT remove max-width here anymore, relying on scale() instead */
+  transition: none;
 }
 
-/* Controls */
 .lb-ctrl{
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 80px; height: 100%;
