@@ -1,4 +1,4 @@
-/* utubee v2.6 - Fullscreen & Hidden Cursor */
+/* utubee v2.7 - Fullscreen Exit Sync */
 
 (() => {
   // --- SETTINGS ---
@@ -111,7 +111,7 @@
   
   function popView(){ 
     if(viewStack.length > 1) {
-      // If we are leaving the lightbox, exit fullscreen too
+      // If manually closing lightbox, kill fullscreen first
       if(viewStack[viewStack.length - 1] === "lightbox"){
         if(document.fullscreenElement) {
           document.exitFullscreen().catch(()=>{});
@@ -122,13 +122,25 @@
     }
   }
 
+  // --- FULLSCREEN EVENT LISTENER ---
+  // This detects when user presses ESC. The browser exits fullscreen,
+  // firing this event. We detect that and force the view to pop back.
+  document.addEventListener("fullscreenchange", () => {
+    const current = viewStack[viewStack.length - 1];
+    // If we just exited fullscreen AND we are still on the lightbox layer...
+    if (!document.fullscreenElement && current === "lightbox") {
+      viewStack.pop(); // Remove "lightbox" from stack
+      updateViewVisibility(); // Refresh UI
+    }
+  });
+
   // --- GLOBAL KEYS ---
   window.addEventListener("keydown", (e) => {
     const current = viewStack[viewStack.length - 1];
     if(e.key === "Escape"){
       if(current !== "wall"){
-        // Browser handles "Exit Fullscreen" on ESC automatically.
-        // We only pop view if we are NOT in fullscreen (meaning user pressed ESC twice)
+        // If we are NOT in fullscreen (e.g. user denied permission or already exited),
+        // we handle the back navigation manually.
         if(!document.fullscreenElement){
            e.preventDefault(); e.stopImmediatePropagation();
            popView(); 
@@ -219,7 +231,7 @@
     pushView("gallery");
   }
 
-  // --- LOGIC: LIGHTBOX (Fullscreen + Loupe) ---
+  // --- LOGIC: LIGHTBOX ---
   let lbIndex = 0;
   let isZooming = false;
 
@@ -229,9 +241,7 @@
     updateLightbox(); 
     pushView("lightbox"); 
 
-    // TRIGGER FULLSCREEN
     els.lb.requestFullscreen().catch(err => {
-      // Fail silently (e.g. if permissions denied)
       console.log("Fullscreen blocked:", err);
     });
   }
@@ -286,12 +296,8 @@
   });
 
   window.addEventListener("pointermove", (e) => {
-    if(isZooming){
-      e.preventDefault(); 
-      updateZoom(e);
-    }
+    if(isZooming){ e.preventDefault(); updateZoom(e); }
   });
-
   window.addEventListener("pointerup", () => { if(isZooming) resetZoom(); });
   window.addEventListener("pointercancel", () => { if(isZooming) resetZoom(); });
 
